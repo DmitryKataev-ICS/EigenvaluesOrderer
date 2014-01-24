@@ -42,6 +42,9 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BasicTypes.fs" />
+    <Compile Include="ModesList.fs" />
+    <Compile Include="LDSSnapshot.fs" />
     <Compile Include="Orderer.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>

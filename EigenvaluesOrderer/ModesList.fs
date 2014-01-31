@@ -10,8 +10,9 @@ type ModesList(modes : Mode list) =
         let swap_list (order : Mode list) (subj : Mode list) : (int*int) list * int list =
             let (nearest_order_modes, nearest_distances) = 
                 List.map
-                    (fun (m : Mode) -> (List.minBy (fun a -> m.V_diff a) order.Modes, List.map (fun a -> m.V_diff a) order.Modes))
+                    (fun (m : Mode) -> (List.minBy (fun a -> m.V_diff a) order, List.map (fun a -> m.V_diff a) order))
                     subj
+                |> List.unzip
             let nearest_order_modes_ids = List.map (fun m -> List.findIndex ((=) m) order) nearest_order_modes
             match order.Length - subj.Length with
                 | 0 ->
@@ -21,9 +22,10 @@ type ModesList(modes : Mode list) =
                         match items2cast with
                             | left when left <= 0 -> (remaining, outcasts)
                             | left when left > 0 -> 
-                                let outcast_id = List.findIndex ((=) List.max nearest_distances) nearest_distances
+                                let outcast_id = List.findIndex ((=) (List.max nearest_distances)) nearest_distances
                                 let remaining_ids = List.filter (((=) outcast_id) >> not) nearest_order_modes_ids
-                                separate (outcast_id :: outcasts) remaining_ids
+                                separate (outcast_id :: outcasts) remaining_ids (items2cast - 1)
+                            | _ -> failwith "failed to separate modes"
                     let (what2keep, what2cast) = separate [] [0..(subj.Length)] -diff
                     (
                         List.zip what2keep (List.map (fun id -> nearest_order_modes_ids.[id]) what2keep),
@@ -31,19 +33,22 @@ type ModesList(modes : Mode list) =
                 | diff when diff > 0 -> //order is longer than subj
                     (
                         List.zip [0..(subj.Length - 1)] nearest_order_modes_ids, 
-                        List.filter (fun id -> not (List.exists ((=) id) nearest_order_modes_id) [0..(order.Length - 1)]))
+                        List.filter (fun id -> not (List.exists ((=) id) nearest_order_modes_ids)) [0..(order.Length - 1)])
+                | _ -> failwith "failed to compare modes"
         if (x.AperiodicCount = init.AperiodicCount && x.OscillatoryCount = init.OscillatoryCount) then // this might be redundant
             let (pairs2swap, _) = swap_list init.Modes _all_modes
             ModesList([for i in 0..(x.Count - 1) -> _all_modes.[pairs2swap.[i] |> snd] ])
         else
-            let (order_osci, order_aper) = List.partition (fun m -> m.isPair) init.Modes
-            let (subj_osci, subj_aper) = List.partition (fun m -> m.isPair) _all_modes // nooooooooooo
-            //let (osci, osci2cast) = swap_list
-            //match x-min oscillatory modes
-            let os2match_count = min x.OscillatoryCount init.OscillatoryCount
-            //match x-min aperiodic modes
-            let ap2match_count = min x.AperiodicCount init.AperiodicCount
-            //handle the reset
+            let (order_osci, order_aper) = List.partition (fun (m : Mode) -> m.isPair) init.Modes
+            let (subj_osci, subj_aper) = List.partition (fun (m : Mode) -> m.isPair) _all_modes // nooooooooooo!11;
+            let (osci, osci2cast) = swap_list order_osci subj_osci
+            let (aper, aper2cast) = swap_list order_aper subj_aper
+            let res_osci = [for i in 0..(osci.Length - 1) -> subj_osci.[osci.[i] |> snd] ]
+            let res_aper = [for i in 0..(aper.Length - 1) -> subj_aper.[aper.[i] |> snd] ]
+            let cast = 
+                [for i in 0..(osci2cast.Length - 1) -> subj_osci.[osci2cast.[i]]] @
+                [for i in 0..(aper2cast.Length - 1) -> subj_aper.[aper2cast.[i]]]
+            ModesList(res_osci @ res_aper @ cast)
     member x.unfold2primitives() =
         let rec unfold2ev (eax : EigenValue list) (src : Mode list) =
             if src.IsEmpty then

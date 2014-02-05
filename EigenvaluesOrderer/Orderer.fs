@@ -12,4 +12,5 @@ type MATLABInterface(init : LDSSnapshot) =
             (fun s -> s.ReorderWith _init)
         |> (:=) _snapshots
     member x.Get id =
-        LDSSnapshot.unfold2primitives (!_snapshots).[id].ModesList |> snd |> List.toArray
+        //LDSSnapshot.unfold2primitives (!_snapshots).[id].ModesList |> snd |> List.toArray
+        () |> _snapshots.Value.[id].ModesList.unfold2primitives |> snd |> List.toArray

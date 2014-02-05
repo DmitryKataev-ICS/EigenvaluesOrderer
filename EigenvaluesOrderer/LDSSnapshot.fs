@@ -72,24 +72,4 @@ type LDSSnapshot
     member x.States with get() = _states
     member x.ModesList with get() = _ModesList
     member x.ReorderWith (init : LDSSnapshot) =
-        let pairs2swap =
-            [
-                for i in 0..(x.ModesList.Length - 1) ->
-                    (
-                        i,
-                        List.findIndex
-                            ((=) 
-                                (List.minBy 
-                                    (fun a -> x.ModesList.[i].V_diff a) 
-                                    init.ModesList))
-                            init.ModesList)]
-        try
-            LDSSnapshot([for i in 0..(_ModesList.Length - 1) -> _ModesList.[pairs2swap.[i] |> snd] ], _states)
-        with
-            | _ -> 
-                failwith 
-                    ("Failed to swap: init.length = " + init.ModesList.Length.ToString() + "; cur.length = " + _ModesList.Length.ToString() + "\n" +
-                        (
-                            pairs2swap 
-                            |> List.map (fun ((a, b) : int*int) -> "("+a.ToString()+"; "+b.ToString()+")\n" )
-                            |> List.reduce (+)))
+        LDSSnapshot(x.ModesList.ReorderWith init.ModesList, _states)

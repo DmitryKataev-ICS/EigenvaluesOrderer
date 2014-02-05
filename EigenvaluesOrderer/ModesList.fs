@@ -8,11 +8,14 @@ type ModesList(modes : Mode list) =
     member x.Modes with get() = _all_modes
     member x.ReorderWith (init : ModesList) =
         let swap_list (order : Mode list) (subj : Mode list) : (int*int) list * int list =
+            //nearest_order_modes - 'order' modes with minimal eigenvector distance to corresponding 'subj' mode
+            //nearest_distances - corresponding eigenvector distances
             let (nearest_order_modes, nearest_distances) = 
                 List.map
                     (fun (m : Mode) -> (List.minBy (fun a -> m.V_diff a) order, List.map (fun a -> m.V_diff a) order))
                     subj
                 |> List.unzip
+            //nearest_order_modes_ids : order.[nearest_order_modes_ids.[i]] = nearest_order_modes.[i]
             let nearest_order_modes_ids = List.map (fun m -> List.findIndex ((=) m) order) nearest_order_modes
             match order.Length - subj.Length with
                 | 0 ->

@@ -43,11 +43,29 @@ type ModesList(modes : Mode list) =
             let (subj_osci, subj_aper) = List.partition (fun (m : Mode) -> m.isPair) _all_modes // nooooooooooo!11;
             let (osci, osci2cast) = swap_list order_osci subj_osci
             let (aper, aper2cast) = swap_list order_aper subj_aper
-            let res_osci = [for i in 0..(osci.Length - 1) -> subj_osci.[osci.[i] |> snd] ]
-            let res_aper = [for i in 0..(aper.Length - 1) -> subj_aper.[aper.[i] |> snd] ]
-            let cast = 
-                [for i in 0..(osci2cast.Length - 1) -> subj_osci.[osci2cast.[i]]] @
-                [for i in 0..(aper2cast.Length - 1) -> subj_aper.[aper2cast.[i]]]
+            let (res_osci, res_aper) =
+                try
+                    ([for i in 0..(osci.Length - 1) -> subj_osci.[osci.[i] |> snd] ],
+                        [for i in 0..(aper.Length - 1) -> subj_aper.[aper.[i] |> snd] ])
+                with
+                    | _ -> failwith ("failed to reorder modes\n" +
+                            "IDList oscillatory length = " + osci.Length.ToString() + "\n" +
+                            "IDList aperiodic length = " + aper.Length.ToString() + "\n" +
+                            "Subject oscillatory length = " + subj_osci.Length.ToString() + "\n" +
+                            "Subject aperiodic length = " + subj_aper.Length.ToString() + "\n" +
+                            "IDList oscillatory:\n" + 
+                            List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString()) osci) + "\n" +
+                            "IDList aperiodic:\n" +
+                            List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString()) aper) + "\n")
+            let cast =
+                try
+                        [for i in 0..(osci2cast.Length - 1) -> subj_osci.[osci2cast.[i]]] @
+                        [for i in 0..(aper2cast.Length - 1) -> subj_aper.[aper2cast.[i]]]
+                with
+                    | _ -> failwith ("failed to pick outcast modes\n" + 
+                            List.reduce (+) (List.map (fun a -> a.ToString()+"\n") osci2cast) +
+                            List.reduce (+) (List.map (fun a -> a.ToString()+"\n") aper2cast) +
+                            "while num of modes is " + x.Count.ToString() + "\n")
             ModesList(res_osci @ res_aper @ cast)
     member x.unfold2primitives() =
         let rec unfold2ev (eax : EigenValue list) (src : Mode list) =

@@ -25,7 +25,9 @@ type ModesList(modes : Mode list) =
                         match items2cast with
                             | left when left <= 0 -> (remaining, outcasts)
                             | left when left > 0 -> 
-                                let outcast_id = List.findIndex ((=) (List.max nearest_distances)) nearest_distances
+                                // outcast_id - id of 'subj' mode having the most distant nearest 'order' mode
+                                let outcast_id = List.findIndex ((=) (List.max nearest_distances)) nearest_distances //BUG. casts the same element every iteration; gotta fix it
+                                // remaining_ids - all 'subj' modes ids except outcast
                                 let remaining_ids = List.filter (((=) outcast_id) >> not) nearest_order_modes_ids
                                 separate (outcast_id :: outcasts) remaining_ids (items2cast - 1)
                             | _ -> failwith "failed to separate modes"

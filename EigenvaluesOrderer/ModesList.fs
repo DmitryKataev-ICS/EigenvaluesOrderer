@@ -21,17 +21,13 @@ type ModesList(modes : Mode list) =
                 | 0 ->
                     (List.zip [0..(subj.Length - 1)] nearest_order_modes_ids, [])
                 | diff when diff < 0 -> //order is shorter than subj
-                    let rec separate outcasts remaining items2cast =
-                        match items2cast with
-                            | left when left <= 0 -> (remaining, outcasts)
-                            | left when left > 0 -> 
-                                // outcast_id - id of 'subj' mode having the most distant nearest 'order' mode
-                                let outcast_id = List.findIndex ((=) (List.max nearest_distances)) nearest_distances //BUG. casts the same element every iteration; gotta fix it
-                                // remaining_ids - all 'subj' modes ids except outcast
-                                let remaining_ids = List.filter (((=) outcast_id) >> not) nearest_order_modes_ids
-                                separate (outcast_id :: outcasts) remaining_ids (items2cast - 1)
-                            | _ -> failwith "failed to separate modes"
-                    let (what2keep, what2cast) = separate [] [0..(subj.Length)] -diff
+                    let sorted_subj = List.sortBy snd (List.zip [0..(nearest_distances.Length - 1)] nearest_distances) |> List.toArray
+                    let what2keep = 
+                        sorted_subj.[0..(sorted_subj.Length - 1 + diff)] 
+                        |> Array.sortBy fst |> Array.unzip |> fst |> Array.toList
+                    let what2cast = 
+                        sorted_subj.[(sorted_subj.Length + diff)..(sorted_subj.Length - 1)] 
+                        |> Array.sortBy fst |> Array.unzip |> fst |> Array.toList
                     (
                         List.zip what2keep (List.map (fun id -> nearest_order_modes_ids.[id]) what2keep),
                         what2cast)
@@ -48,20 +44,32 @@ type ModesList(modes : Mode list) =
             let (subj_osci, subj_aper) = List.partition (fun (m : Mode) -> m.isPair) _all_modes // nooooooooooo!11;
             let (osci, osci2cast) = swap_list order_osci subj_osci
             let (aper, aper2cast) = swap_list order_aper subj_aper
-            let (res_osci, res_aper) =
+            let res_osci =
                 try
-                    ([for i in 0..(osci.Length - 1) -> subj_osci.[osci.[i] |> snd] ],
-                        [for i in 0..(aper.Length - 1) -> subj_aper.[aper.[i] |> snd] ])
+                    [for i in 0..(osci.Length - 1) -> subj_osci.[osci.[i] |> snd] ]
                 with
-                    | _ -> failwith ("failed to reorder modes\n" +
-                            "IDList oscillatory length = " + osci.Length.ToString() + "\n" +
-                            "IDList aperiodic length = " + aper.Length.ToString() + "\n" +
-                            "Subject oscillatory length = " + subj_osci.Length.ToString() + "\n" +
-                            "Subject aperiodic length = " + subj_aper.Length.ToString() + "\n" +
-                            "IDList oscillatory:\n" + 
-                            List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString()) osci) + "\n" +
-                            "IDList aperiodic:\n" +
-                            List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString()) aper) + "\n")
+                    | ex -> failwith ("failed to reorder oscillatory modes\n" + ex.Message + "\n" +
+                                "IDList oscillatory length = " + osci.Length.ToString() + "\n" +
+                                "Subject oscillatory length = " + subj_osci.Length.ToString() + "\n" +
+                                "Order oscillatory length = " + order_osci.Length.ToString() + "\n" +
+                                "IDList aperiodic length = " + aper.Length.ToString() + "\n" +
+                                "Subject aperiodic length = " + subj_aper.Length.ToString() + "\n" +
+                                "Order aperiodic length = " + order_aper.Length.ToString() + "\n" +
+                                "IDList oscillatory:\n" + 
+                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") osci) + "\n")
+            let res_aper =
+                try
+                    [for i in 0..(aper.Length - 1) -> subj_aper.[aper.[i] |> snd] ]
+                with
+                    | ex -> failwith ("failed to reorder aperiodic modes\n" + ex.Message + "\n" +
+                                "IDList aperiodic length = " + aper.Length.ToString() + "\n" +
+                                "Subject aperiodic length = " + subj_aper.Length.ToString() + "\n" +
+                                "Order aperiodic length = " + order_aper.Length.ToString() + "\n" +
+                                "IDList oscillatory length = " + osci.Length.ToString() + "\n" +
+                                "Subject oscillatory length = " + subj_osci.Length.ToString() + "\n" +
+                                "Order oscillatory length = " + order_osci.Length.ToString() + "\n" +
+                                "IDList aperiodic:\n" +
+                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") aper) + "\n")
             let cast =
                 try
                         [for i in 0..(osci2cast.Length - 1) -> subj_osci.[osci2cast.[i]]] @

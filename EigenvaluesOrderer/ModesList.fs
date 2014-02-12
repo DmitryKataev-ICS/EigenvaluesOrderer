@@ -56,7 +56,9 @@ type ModesList(modes : Mode list) =
                                 "Subject aperiodic length = " + subj_aper.Length.ToString() + "\n" +
                                 "Order aperiodic length = " + order_aper.Length.ToString() + "\n" +
                                 "IDList oscillatory:\n" + 
-                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") osci) + "\n")
+                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") osci) + "\n" +
+                                "IDList aperiodic:\n" +
+                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") aper) + "\n")
             let res_aper =
                 try
                     [for i in 0..(aper.Length - 1) -> subj_aper.[aper.[i] |> snd] ]
@@ -69,7 +71,9 @@ type ModesList(modes : Mode list) =
                                 "Subject oscillatory length = " + subj_osci.Length.ToString() + "\n" +
                                 "Order oscillatory length = " + order_osci.Length.ToString() + "\n" +
                                 "IDList aperiodic:\n" +
-                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") aper) + "\n")
+                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") aper) + "\n" +
+                                "IDList oscillatory:\n" + 
+                                List.reduce (+) (List.map (fun (a, b) -> a.ToString() + "->" + b.ToString() + "\n") osci) + "\n")
             let cast =
                 try
                         [for i in 0..(osci2cast.Length - 1) -> subj_osci.[osci2cast.[i]]] @

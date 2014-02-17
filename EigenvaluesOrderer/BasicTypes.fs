@@ -8,6 +8,11 @@ type EigenValue(ReIm : float * float, V : float array * float array, refB : floa
     member x.refB = refB
     member x.refC = refC
     member x.isComplex = (abs x.Im) > EigenValue.closeEnough
+    member x.getStringHash() = 
+        let round2snd : float -> float = ((*) 100.0) >> System.Math.Round
+        Array.map (fun (a,b) -> (round2snd a).ToString() + (round2snd a).ToString()) (Array.zip (fst V) (snd V))
+        |> Array.reduce (+)
+        |> (+) ((sign x.Im).ToString())
     static member isConjugate (a : EigenValue) (b : EigenValue) = a.Re = b.Re && (a.Im + b.Im < EigenValue.closeEnough)
 
 type Mode(a : EigenValue, b : EigenValue option) =

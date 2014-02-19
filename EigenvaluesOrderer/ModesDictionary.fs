@@ -16,10 +16,14 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                     min_index (i, head) tail available (i+1) 
                 else min_index cur tail available (i+1)
             | [] -> fst cur
-    let _dict =
+    let (_dict, _keys, _keys_full) =
         if keys.IsEmpty then
-            List.zip (List.map (fun (a : EigenValue) -> a.getStringHash()) ev) ev
-            |> dict
+            let loc_keys = List.map (fun (a : EigenValue) -> a.getStringHash()) ev
+            (
+                List.zip loc_keys ev |> dict,
+                loc_keys,
+                List.map (fun (a : EigenValue) -> a.V) ev)
+
         else
             //let wip = List.zip keys (List.map (fun a -> TmpCell(a)) keys_full) |> List.toSeq |> dict
             let eax = List.map (fun a -> TmpCell(a)) keys_full
@@ -38,7 +42,11 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                         are_available.[closest_id]  := false
                         eax.[index].EV := Some ev.[closest_id])
                 all_distances
-            List.zip keys (List.map (fun (a : TmpCell) -> a.EV.Value.Value) eax)
-            |> dict
+            (
+                List.zip keys (List.map (fun (a : TmpCell) -> a.EV.Value.Value) eax) |> dict,
+                keys,
+                List.map Array.unzip keys_full)
             
     member x.EigenValues with get() = _dict
+    member x.Keys with get() = _keys
+    member x.KeysFull with get() = _keys_full

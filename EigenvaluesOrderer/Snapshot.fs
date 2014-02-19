@@ -1,6 +1,6 @@
 ﻿namespace EigenvaluesOrderer
 
-type Snaphot
+type Snapshot
     (
         reV : float array array,
         imV : float array array,
@@ -10,7 +10,9 @@ type Snaphot
         imB : float array,
         reC : float array,
         imC : float array,
-        states : string array) =
+        states : string array,
+        keys : string list,
+        keys_full : (float * float) array list) =
     //let vdims = [reV.Length; reV.[0].Length; imV.Length; imV.[0].Length]
     let _V = Array.zip reV imV
     //let ddims = (reD.Length, imD.Length)
@@ -31,5 +33,33 @@ type Snaphot
             (Array.zip _V _D)
             (Array.zip _B _C)
         |> Array.toList
+    let _eigen_dict = EigenDict(keys, keys_full, _EV)
+    member x.Keys with get() = _eigen_dict.Keys
+    member x.KeysFull with get() = _eigen_dict.KeysFull
+    member x.Unfold2Primitives() =
+        let _all_ev = List.map (fun (a : string) -> _eigen_dict.EigenValues.[a]) _eigen_dict.Keys
+        let rec unfold2ev (eax : EigenValue list) (src : Mode list) =
+            if src.IsEmpty then
+                eax |> List.rev
+            else
+                unfold2ev ((src.Head.GetEV()) @ eax) src.Tail
+        let args =
+            _all_ev
+            |> List.fold
+                (
+                    fun (Vs, other) (ev : EigenValue) ->
+                        (
+                            [(fst ev.V) :: Vs.[0]; (snd ev.V) :: Vs.[1]],
+                            [
+                                ev.Re :: other.[0]; 
+                                ev.Im :: other.[1]; 
+                                (fst ev.refB) :: other.[2];
+                                (snd ev.refB) :: other.[3];
+                                (fst ev.refC) :: other.[4];
+                                (snd ev.refC) :: other.[5]] ))
+                ([ [[||]]; [[||]] ], [for i in 0..5 -> []])
+        let Vs = args |> fst |> List.map (List.rev>>List.toArray)
+        let other = args |> snd |> List.map (List.rev>>List.toArray)
+        (Vs, other)
 
 

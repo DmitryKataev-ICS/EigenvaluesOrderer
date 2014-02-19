@@ -45,10 +45,10 @@
     <Compile Include="BasicTypes.fs" />
     <Compile Include="ModesList.fs" />
     <Compile Include="LDSSnapshot.fs" />
-    <Compile Include="Orderer.fs" />
     <None Include="Script.fsx" />
     <Compile Include="ModesDictionary.fs" />
     <Compile Include="Snapshot.fs" />
+    <Compile Include="Orderer.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

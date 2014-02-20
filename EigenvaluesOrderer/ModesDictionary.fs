@@ -1,9 +1,10 @@
 ﻿namespace EigenvaluesOrderer
 
 type TmpCell(fullkey : (float * float) array) =
-    member x.FullKey = fullkey
-    member x.IsEmpty = ref true
-    member x.EV : EigenValue option ref = ref None
+    let _keys_full = fullkey
+    let _ev : EigenValue option ref = ref None
+    member x.FullKey with get() = _keys_full
+    member x.EV with get() = !_ev and set(newval) = _ev := newval
 
 type EigenDict (keys : string list, keys_full : (float * float) array list, ev : EigenValue list) =
     let fullkey_dist (a : (float * float) array) (b : (float * float) array) =
@@ -37,13 +38,12 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                 (
                     fun index (dist_vector : float list) -> // distances from current TmpCell to all subject eigenvalues
                         let id = Array.findIndex (fun a -> !a) are_available
-                        //let emptiness_map = List.map (fun (a : TmpCell) -> a.IsEmpty) eax
                         let closest_id = min_index (id, dist_vector.[id]) dist_vector are_available 0
                         are_available.[closest_id]  := false
-                        eax.[index].EV := Some ev.[closest_id])
+                        eax.[index].EV <- Some (ev.[closest_id]))
                 all_distances
             (
-                List.zip keys (List.map (fun (a : TmpCell) -> a.EV.Value.Value) eax) |> dict,
+                List.zip keys (List.map (fun (a : TmpCell) -> a.EV.Value) eax) |> dict,
                 keys,
                 List.map Array.unzip keys_full)
             

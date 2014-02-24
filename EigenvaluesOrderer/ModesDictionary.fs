@@ -7,6 +7,7 @@ type TmpCell(fullkey : (float * float) array) =
     member x.EV with get() = !_ev and set(newval) = _ev := newval
 
 type EigenDict (keys : string list, keys_full : (float * float) array list, ev : EigenValue list) =
+    let _log = ref ""
     let fullkey_dist (a : (float * float) array) (b : (float * float) array) =
         Array.map2 (fun (r1,i1) (r2,i2) -> (abs (r1-r2)) + (abs (i1-i2))) a b |> Array.sum
     // cur - index and value of currently chosen mode for given key; src mode distances list
@@ -40,6 +41,7 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                         let id = Array.findIndex (fun a -> !a) are_available
                         let closest_id = min_index (id, dist_vector.[id]) dist_vector are_available 0
                         are_available.[closest_id]  := false
+                        _log := !_log + "mode #" + closest_id.ToString() + " pushed to cell #" + index.ToString() + "with distance " + dist_vector.[closest_id].ToString() + "\n"
                         eax.[index].EV <- Some (ev.[closest_id]))
                 all_distances
             (
@@ -50,3 +52,4 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
     member x.EigenValues with get() = _dict
     member x.Keys with get() = _keys
     member x.KeysFull with get() = _keys_full
+    member x.Log with get() = _log.Value

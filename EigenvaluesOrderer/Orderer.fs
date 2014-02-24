@@ -42,3 +42,4 @@ type Orderer(length : int) =
     member x.GetOrdered id =
         _snapshots.[id].Value.Value.Unfold2Primitives()
         |> snd |> List.toArray
+    member x.GetLog id = _snapshots.[id].Value.Value.Log

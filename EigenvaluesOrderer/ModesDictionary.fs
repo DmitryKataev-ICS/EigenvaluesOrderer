@@ -42,6 +42,11 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                         let closest_id = min_index (id, dist_vector.[id]) dist_vector are_available 0
                         are_available.[closest_id]  := false
                         _log := !_log + "mode #" + closest_id.ToString() + " pushed to cell #" + index.ToString() + "with distance " + dist_vector.[closest_id].ToString() + "\n"
+                        _log := !_log + "other distances are: \n" + 
+                            (
+                                dist_vector 
+                                |> List.map (fun a -> a.ToString())
+                                |> List.reduce (fun a b -> a + "\n" + b) )
                         eax.[index].EV <- Some (ev.[closest_id]))
                 all_distances
             (

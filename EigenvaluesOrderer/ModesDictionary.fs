@@ -9,7 +9,8 @@ type TmpCell(fullkey : (float * float) array) =
 type EigenDict (keys : string list, keys_full : (float * float) array list, ev : EigenValue list) =
     let _log = ref ""
     let fullkey_dist (a : (float * float) array) (b : (float * float) array) =
-        Array.map2 (fun (r1,i1) (r2,i2) -> (abs (r1-r2)) + (abs (i1-i2))) a b |> Array.sum
+        let sqr arg = arg * arg
+        Array.map2 (fun (r1,i1) (r2,i2) -> (sqr (r1-r2)) + (sqr (i1-i2))) a b |> Array.sum |> sqrt
     // cur - index and value of currently chosen mode for given key; src mode distances list
     let rec min_index (cur : int*float) (src : float list) (available : bool ref array) i =
         match src with

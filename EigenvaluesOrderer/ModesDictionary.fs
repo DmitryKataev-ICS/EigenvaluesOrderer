@@ -10,7 +10,8 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
     let _log = ref ""
     let fullkey_dist (a : (float * float) array) (b : (float * float) array) =
         let sqr arg = arg * arg
-        Array.map2 (fun (r1,i1) (r2,i2) -> (sqr (r1-r2)) + (sqr (i1-i2))) a b |> Array.sum |> sqrt
+        //Array.map2 (fun (r1,i1) (r2,i2) -> (sqr (r1-r2)) + (sqr (i1-i2))) a b |> Array.sum |> sqrt
+        Array.map2 (fun (r1,i1) (r2,i2) -> sqr (r1-r2)) a b |> Array.sum |> sqrt
     // cur - index and value of currently chosen mode for given key; src mode distances list
     let rec min_index (cur : int*float) (src : float list) (available : bool ref array) i =
         match src with
@@ -19,43 +20,72 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                     min_index (i, head) tail available (i+1) 
                 else min_index cur tail available (i+1)
             | [] -> fst cur
-    let (_dict, _keys, _keys_full) =
+    let min_indeces (dists : float [] []) =
+        let find_min (I : int array) (J : int array) =
+            let cur = ref (I.[0], J.[0])
+            let curval = ref dists.[fst !cur].[snd !cur]
+            for i in I do
+                for j in J do
+                    if dists.[i].[j] < !curval then 
+                        cur := (i,j)
+                        curval := dists.[i].[j]
+            !cur
+        let _I = ref [|0..(dists.Length)|]
+        let _J = ref [|0..(dists.Length)|]
+        let indeces = [|for i in 0..(dists.Length - 1) -> ref (0,0)|]
+        for k in 0..(dists.Length - 1) do
+            indeces.[k] := find_min !_I !_J
+            //_I := Array.append !_I.[0..(indeces.[k]|>fst)] !_I
+    let (_dict, _keys, _keys_full, _all_distances) =
         if keys.IsEmpty then
             let loc_keys = List.map (fun (a : EigenValue) -> a.getStringHash()) ev
             (
                 List.zip loc_keys ev |> dict,
                 loc_keys,
-                List.map (fun (a : EigenValue) -> a.V) ev)
+                List.map (fun (a : EigenValue) -> a.V) ev,
+                [|for i in 1..ev.Length -> [|for i in 1..ev.Length -> 0.0|]|])
 
         else
             //let wip = List.zip keys (List.map (fun a -> TmpCell(a)) keys_full) |> List.toSeq |> dict
             let eax = List.map (fun a -> TmpCell(a)) keys_full
             let are_available = [|for i in 0..(eax.Length - 1) -> ref true|]
-            let all_distances = // all_distaces.[i].[j] :> i - eax index, j - ev index
+            let all_distances = // all_distances.[i].[j] :> i - eax index, j - ev index
+//                [
+//                    for i in 0..(ev.Length - 1) ->
+//                        [
+//                        for j in 0..(ev.Length - 1) ->
+//                            fullkey_dist eax.[i].FullKey (Array.zip (fst ev.[j].V) (snd ev.[j].V))]]
                 List.map
                     (fun (tmpcell : TmpCell) -> 
-                        List.map (fun (eig : EigenValue) -> fullkey_dist tmpcell.FullKey (Array.zip (fst eig.V) (snd eig.V))) ev)
+                        List.map (fun (eig : EigenValue) -> fullkey_dist tmpcell.FullKey (Array.zip (fst eig.V) (snd eig.V))) ev |> List.toArray)
                     eax
-            List.iteri
-                (
-                    fun index (dist_vector : float list) -> // distances from current TmpCell to all subject eigenvalues
-                        let id = Array.findIndex (fun a -> !a) are_available
-                        let closest_id = min_index (id, dist_vector.[id]) dist_vector are_available 0
-                        are_available.[closest_id]  := false
-                        _log := !_log + "mode #" + closest_id.ToString() + " pushed to cell #" + index.ToString() + "with distance " + dist_vector.[closest_id].ToString() + "\n"
-                        _log := !_log + "other distances are: \n" + 
-                            (
-                                dist_vector 
-                                |> List.map (fun a -> a.ToString())
-                                |> List.reduce (fun a b -> a + "\n" + b) )
-                        eax.[index].EV <- Some (ev.[closest_id]))
-                all_distances
+                |> List.toArray
+//            Array.iteri
+//                (
+//                    fun index (dist_vector : float array) -> // distances from current TmpCell to all subject eigenvalues
+//                        let id = Array.findIndex (fun a -> !a) are_available
+//                        let closest_id = min_index (id, dist_vector.[id]) dist_vector are_available 0
+//                        are_available.[closest_id]  := false
+//                        _log := !_log + "mode #" + closest_id.ToString() + " pushed to cell #" + index.ToString() + "with distance " + dist_vector.[closest_id].ToString() + "\n"
+//                        _log := !_log + "other distances are: \n" + 
+//                            (
+//                                dist_vector 
+//                                |> Array.map (fun a -> a.ToString())
+//                                |> Array.reduce (fun a b -> a + "\n" + b) )
+//                        eax.[index].EV <- Some (ev.[closest_id]))
+//                all_distances
             (
                 List.zip keys (List.map (fun (a : TmpCell) -> a.EV.Value) eax) |> dict,
                 keys,
-                List.map Array.unzip keys_full)
+                List.map Array.unzip keys_full,
+                all_distances)
             
     member x.EigenValues with get() = _dict
     member x.Keys with get() = _keys
-    member x.KeysFull with get() = _keys_full
+    member x.KeysFull //with 
+        with get() = //_keys_full
+            List.map
+                (fun (a : EigenValue) -> a.V)
+                (List.map (fun (a : string) -> x.EigenValues.[a]) x.Keys)
     member x.Log with get() = _log.Value
+    member x.AllDistaces with get() = _all_distances

@@ -37,6 +37,7 @@ type Snapshot
     member x.Keys with get() = _eigen_dict.Keys
     member x.KeysFull with get() = _eigen_dict.KeysFull
     member x.Log with get() = _eigen_dict.Log
+    member x.AllDistances with get() = _eigen_dict.AllDistaces
     member x.Unfold2Primitives() =
         let _all_ev = List.map (fun (a : string) -> _eigen_dict.EigenValues.[a]) _eigen_dict.Keys
         let rec unfold2ev (eax : EigenValue list) (src : Mode list) =

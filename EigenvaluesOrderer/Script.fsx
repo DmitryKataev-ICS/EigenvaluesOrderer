@@ -30,9 +30,11 @@ type TmpCell(fullkey : (float * float) array) =
     member x.EV with get() = !_ev and set(newval) = _ev := newval
 
 type EigenDict (keys : string list, keys_full : (float * float) array list, ev : EigenValue list) =
-    do printfn "%i%i%i" keys.Length keys_full.Length ev.Length
+    let _log = ref ""
     let fullkey_dist (a : (float * float) array) (b : (float * float) array) =
-        Array.map2 (fun (r1,i1) (r2,i2) -> (abs (r1-r2)) + (abs (i1-i2))) a b |> Array.sum
+        let sqr arg = arg * arg
+        //Array.map2 (fun (r1,i1) (r2,i2) -> (sqr (r1-r2)) + (sqr (i1-i2))) a b |> Array.sum |> sqrt
+        Array.map2 (fun (r1,i1) (r2,i2) -> sqr (r1-r2)) a b |> Array.sum |> sqrt
     // cur - index and value of currently chosen mode for given key; src mode distances list
     let rec min_index (cur : int*float) (src : float list) (available : bool ref array) i =
         match src with
@@ -41,56 +43,104 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                     min_index (i, head) tail available (i+1) 
                 else min_index cur tail available (i+1)
             | [] -> fst cur
-    let (_dict, _keys, _keys_full) =
+    let min_indeces (dists : float [] []) =
+        let find_min (I : int array) (J : int array) =
+            let cur = ref (I.[0], J.[0])
+            let curval = ref dists.[fst !cur].[snd !cur]
+            for i in I do
+                for j in J do
+                    if dists.[i].[j] < !curval then 
+                        cur := (i,j)
+                        curval := dists.[i].[j]
+            !cur
+        let extract (ar : int array) k =
+            try
+                match (k, ar.Length) with
+                    | (0, l) when l = 1 -> [||]
+                    | (0, l) when l > 1 -> ar.[1..]
+                    | (k, l) when k < (l - 1) -> Array.append ar.[..(k - 1)] ar.[(k + 1)..]
+                    | (k, l) when k = (l - 1) -> ar.[..(k - 1)]
+                    | _ -> failwith ("\ncannot extract chosen index:" + k.ToString() + "\n")
+            with
+                | _ -> failwith ("\ncannot extract chosen index:" + k.ToString() + "\n")
+        let _I = ref [|0..(dists.Length - 1)|]
+        let _J = ref [|0..(dists.Length - 1)|]
+        let indeces = [|for i in 0..(dists.Length - 1) -> ref (0,0)|]
+        for k in 0..(dists.Length - 1) do
+            indeces.[k] := find_min !_I !_J
+            _I := extract !_I (Array.findIndex ((=) (fst indeces.[k].Value)) !_I)
+            _J := extract !_J (Array.findIndex ((=) (snd indeces.[k].Value)) !_J)
+        indeces
+    let (_dict, _keys, _keys_full, _all_distances) =
         if keys.IsEmpty then
-            printfn "empty keys dict"
             let loc_keys = List.map (fun (a : EigenValue) -> a.getStringHash()) ev
             (
                 List.zip loc_keys ev |> dict,
                 loc_keys,
-                List.map (fun (a : EigenValue) -> a.V) ev)
+                List.map (fun (a : EigenValue) -> a.V) ev,
+                [|for i in 1..ev.Length -> [|for i in 1..ev.Length -> 0.0|]|])
 
         else
-            printfn "some other dict"
             //let wip = List.zip keys (List.map (fun a -> TmpCell(a)) keys_full) |> List.toSeq |> dict
             let eax = List.map (fun a -> TmpCell(a)) keys_full
             let are_available = [|for i in 0..(eax.Length - 1) -> ref true|]
-            let all_distances = // all_distaces.[i].[j] :> i - eax index, j - ev index
+            let all_distances = // all_distances.[i].[j] :> i - eax index, j - ev index
+//                [
+//                    for i in 0..(ev.Length - 1) ->
+//                        [
+//                        for j in 0..(ev.Length - 1) ->
+//                            fullkey_dist eax.[i].FullKey (Array.zip (fst ev.[j].V) (snd ev.[j].V))]]
                 List.map
                     (fun (tmpcell : TmpCell) -> 
-                        List.map (fun (eig : EigenValue) -> fullkey_dist tmpcell.FullKey (Array.zip (fst eig.V) (snd eig.V))) ev)
+                        List.map (fun (eig : EigenValue) -> fullkey_dist tmpcell.FullKey (Array.zip (fst eig.V) (snd eig.V))) ev |> List.toArray)
                     eax
-            List.iteri
-                (
-                    fun index (dist_vector : float list) -> // distances from current TmpCell to all subject eigenvalues
-                        let id = Array.findIndex (fun a -> !a) are_available
-                        //let emptiness_map = List.map (fun (a : TmpCell) -> a.IsEmpty) eax
-                        let closest_id = min_index (id, dist_vector.[id]) dist_vector are_available 0
-                        are_available.[closest_id]  := false
-                        match eax.[index].EV with
-                            | None -> printfn "eax.[%i].EV.Value is None" index
-                            | _ -> printfn "eax.[%i].EV.Value is not None O_O" index
-                        eax.[index].EV <- Some (ev.[closest_id])
-                        printfn "put %i into %i" closest_id index
-                        match eax.[index].EV with
-                            | None -> printfn "eax.[%i].EV.Value is None" index
-                            | Some(a) -> printfn "eax.[%i].EV.Value is not None" index)
-                all_distances
-            List.iteri
-                (
-                    fun id (a : TmpCell) ->
-                        match a.EV with
-                            | None -> printfn "%i is None" id
-                            | Some(b) -> printfn "%i is Some" id) 
-                eax
+                |> List.toArray
+            try
+                Array.iter
+                    (
+                        fun (cell : (int*int) ref) ->
+                            eax.[fst cell.Value].EV <- Some (ev.[snd cell.Value]))
+                    (min_indeces all_distances)
+            with
+                | _ -> 
+                    failwith 
+                        (
+                            "Cannot reorder: \n" +
+                            (Array.map 
+                                (fun (cell : (int*int) ref) ->
+                                    let (_to, _from) = !cell
+                                    _to.ToString() + "<-" + _from.ToString() + "\n") 
+                                (min_indeces all_distances)
+                            |> Array.reduce (+)))
+//            Array.iteri
+//                (
+//                    fun index (dist_vector : float array) -> // distances from current TmpCell to all subject eigenvalues
+//                        let id = Array.findIndex (fun a -> !a) are_available
+//                        let closest_id = min_index (id, dist_vector.[id]) dist_vector are_available 0
+//                        are_available.[closest_id]  := false
+//                        _log := !_log + "mode #" + closest_id.ToString() + " pushed to cell #" + index.ToString() + "with distance " + dist_vector.[closest_id].ToString() + "\n"
+//                        _log := !_log + "other distances are: \n" + 
+//                            (
+//                                dist_vector 
+//                                |> Array.map (fun a -> a.ToString())
+//                                |> Array.reduce (fun a b -> a + "\n" + b) )
+//                        eax.[index].EV <- Some (ev.[closest_id]))
+//                all_distances
             (
-                List.zip keys (List.map (fun (a : TmpCell) -> printfn "mapping..."; a.EV.Value) eax) |> dict,
+                List.zip keys (List.map (fun (a : TmpCell) -> a.EV.Value) eax) |> dict,
                 keys,
-                List.map Array.unzip keys_full)
+                List.map Array.unzip keys_full,
+                all_distances)
             
     member x.EigenValues with get() = _dict
     member x.Keys with get() = _keys
-    member x.KeysFull with get() = _keys_full
+    member x.KeysFull //with 
+        with get() = //_keys_full
+            List.map
+                (fun (a : EigenValue) -> a.V)
+                (List.map (fun (a : string) -> x.EigenValues.[a]) x.Keys)
+    member x.Log with get() = _log.Value
+    member x.AllDistaces with get() = _all_distances
 
 type Snapshot
     (
@@ -128,9 +178,10 @@ type Snapshot
     let _eigen_dict = EigenDict(keys, keys_full, _EV)
     member x.Keys with get() = _eigen_dict.Keys
     member x.KeysFull with get() = _eigen_dict.KeysFull
+    member x.Log with get() = _eigen_dict.Log
+    member x.AllDistances with get() = _eigen_dict.AllDistaces
     member x.Unfold2Primitives() =
         let _all_ev = List.map (fun (a : string) -> _eigen_dict.EigenValues.[a]) _eigen_dict.Keys
-
         let args =
             _all_ev
             |> List.fold
@@ -154,7 +205,7 @@ type Orderer(length : int) =
     let _snapshots : Snapshot option ref array= [|for i in 1..length -> ref None|]
     let _next_index = ref 0
     let _keys : string list ref = ref []
-    let _keys_full : (float * float) array list ref = ref []
+    let _keys_full : (float * float) array list ref = ref [] // always contains keys_full of latest snapshot added
     member x.AddSnapshot(in_reV : float[,], in_imV : float[,], reD, imD, reB, imB, reC, imC)= //, states) =
         let states : string[] = [||]
         let reV = [|for i in 0..(in_reV.GetLength(1) - 1) -> in_reV.[*, i]|]
@@ -166,17 +217,20 @@ type Orderer(length : int) =
             _snapshots.[!_next_index] := Some(snapshot)
             _next_index := 1
         else
-            match (!_keys, !_keys_full) with
-                | (a, b) when a.Length = 0 && b.Length = 0 -> failwith "_keys and _keys_full are not set!11 =(((( \n"
-                | (a, _) when a.Length = 0 -> failwith "_keys are not set! =(\n"
-                | (_, a) when a.Length = 0 -> failwith "_keys_full are not set! =( \n"
-                | _ -> ()
+//            match (!_keys, !_keys_full) with
+//                | (a, b) when a.Length = 0 && b.Length = 0 -> failwith "_keys and _keys_full are not set!11 =(((( \n"
+//                | (a, _) when a.Length = 0 -> failwith "_keys are not set! =(\n"
+//                | (_, a) when a.Length = 0 -> failwith "_keys_full are not set! =( \n"
+//                | _ -> ()
             let snapshot = Snapshot(reV, imV, reD, imD, reB, imB, reC, imC, states, !_keys, !_keys_full)
             _snapshots.[!_next_index] := Some(snapshot)
             _next_index := !_next_index + 1
+            _keys_full := List.map (fun (a, b) -> Array.zip a b) snapshot.KeysFull
     member x.GetOrdered id =
         _snapshots.[id].Value.Value.Unfold2Primitives()
         |> snd |> List.toArray
+    member x.GetLog id = _snapshots.[id].Value.Value.Log
+    member x.GetDistances id = _snapshots.[id].Value.Value.AllDistances
 
 
 

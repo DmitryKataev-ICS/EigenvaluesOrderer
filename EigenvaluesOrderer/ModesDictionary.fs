@@ -10,8 +10,8 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
     let _log = ref ""
     let fullkey_dist (a : (float * float) array) (b : (float * float) array) =
         let sqr arg = arg * arg
-        //Array.map2 (fun (r1,i1) (r2,i2) -> (sqr (r1-r2)) + (sqr (i1-i2))) a b |> Array.sum |> sqrt
-        Array.map2 (fun (r1,i1) (r2,i2) -> sqr (r1-r2)) a b |> Array.sum |> sqrt
+        Array.map2 (fun (r1,i1) (r2,i2) -> (sqr (r1-r2)) + (sqr (i1-i2))) a b |> Array.sum |> sqrt
+        //Array.map2 (fun (r1,i1) (r2,i2) -> sqr (r1-r2)) a b |> Array.sum |> sqrt
     // cur - index and value of currently chosen mode for given key; src mode distances list
     let rec min_index (cur : int*float) (src : float list) (available : bool ref array) i =
         match src with
@@ -30,12 +30,24 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                         cur := (i,j)
                         curval := dists.[i].[j]
             !cur
-        let _I = ref [|0..(dists.Length)|]
-        let _J = ref [|0..(dists.Length)|]
+        let extract (ar : int array) k =
+            try
+                match (k, ar.Length) with
+                    | (0, l) when l = 1 -> [||]
+                    | (0, l) when l > 1 -> ar.[1..]
+                    | (k, l) when k < (l - 1) -> Array.append ar.[..(k - 1)] ar.[(k + 1)..]
+                    | (k, l) when k = (l - 1) -> ar.[..(k - 1)]
+                    | _ -> failwith ("\ncannot extract chosen index:" + k.ToString() + "\n")
+            with
+                | _ -> failwith ("\ncannot extract chosen index:" + k.ToString() + "\n")
+        let _I = ref [|0..(dists.Length - 1)|]
+        let _J = ref [|0..(dists.Length - 1)|]
         let indeces = [|for i in 0..(dists.Length - 1) -> ref (0,0)|]
         for k in 0..(dists.Length - 1) do
             indeces.[k] := find_min !_I !_J
-            //_I := Array.append !_I.[0..(indeces.[k]|>fst)] !_I
+            _I := extract !_I (Array.findIndex ((=) (fst indeces.[k].Value)) !_I)
+            _J := extract !_J (Array.findIndex ((=) (snd indeces.[k].Value)) !_J)
+        indeces
     let (_dict, _keys, _keys_full, _all_distances) =
         if keys.IsEmpty then
             let loc_keys = List.map (fun (a : EigenValue) -> a.getStringHash()) ev
@@ -57,9 +69,41 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
 //                            fullkey_dist eax.[i].FullKey (Array.zip (fst ev.[j].V) (snd ev.[j].V))]]
                 List.map
                     (fun (tmpcell : TmpCell) -> 
-                        List.map (fun (eig : EigenValue) -> fullkey_dist tmpcell.FullKey (Array.zip (fst eig.V) (snd eig.V))) ev |> List.toArray)
+                        List.map (fun (eig : EigenValue) -> 
+                            (+)
+                                (fullkey_dist 
+                                    tmpcell.FullKey 
+                                    (Array.zip (fst eig.V) (snd eig.V)))
+                                0.0)
+                            ev 
+                        |> List.toArray)
                     eax
                 |> List.toArray
+            try
+                Array.iter
+                    (
+                        fun (cell : (int*int) ref) ->
+                            eax.[fst cell.Value].EV <- Some (ev.[snd cell.Value])
+                            _log := !_log + "mode #" + (snd cell.Value).ToString() + 
+                                " pushed to cell #" + (fst cell.Value).ToString() + 
+                                "with distance " + all_distances.[(fst cell.Value)].[(snd cell.Value)].ToString() + "\n"
+                            _log := !_log + "other distances are: \n" + 
+                                (
+                                    all_distances.[(snd cell.Value)] 
+                                    |> Array.map (fun a -> a.ToString())
+                                    |> Array.reduce (fun a b -> a + "\n" + b) ))
+                    (min_indeces all_distances)
+            with
+                | _ -> 
+                    failwith 
+                        (
+                            "Cannot reorder: \n" +
+                            (Array.map 
+                                (fun (cell : (int*int) ref) ->
+                                    let (_to, _from) = !cell
+                                    _to.ToString() + "<-" + _from.ToString() + "\n") 
+                                (min_indeces all_distances)
+                            |> Array.reduce (+)))
 //            Array.iteri
 //                (
 //                    fun index (dist_vector : float array) -> // distances from current TmpCell to all subject eigenvalues

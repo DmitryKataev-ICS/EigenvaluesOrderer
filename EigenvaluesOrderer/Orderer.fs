@@ -26,7 +26,7 @@ type Orderer(length : int) =
         let reV = [|for i in 0..(in_reV.GetLength(1) - 1) -> in_reV.[*, i]|]
         let imV = [|for i in 0..(in_imV.GetLength(1) - 1) -> in_imV.[*, i]|]
         if !_next_index = 0 then
-            let snapshot = Snapshot(reV, imV, reD, imD, reB, imB, reC, imC, states, [], [])
+            let snapshot = Snapshot(reV, imV, reD, imD, reB, imB, reC, imC, states, [], [], [||])
             _keys := snapshot.Keys
             _keys_full := List.map (fun (a, b) -> Array.zip a b) snapshot.KeysFull
             _snapshots.[!_next_index] := Some(snapshot)
@@ -38,7 +38,7 @@ type Orderer(length : int) =
 //                | (a, _) when a.Length = 0 -> failwith "_keys are not set! =(\n"
 //                | (_, a) when a.Length = 0 -> failwith "_keys_full are not set! =( \n"
 //                | _ -> ()
-            let snapshot = Snapshot(reV, imV, reD, imD, reB, imB, reC, imC, states, !_keys, !_keys_full)
+            let snapshot = Snapshot(reV, imV, reD, imD, reB, imB, reC, imC, states, !_keys, !_keys_full, !_keys_ev)
             _snapshots.[!_next_index] := Some(snapshot)
             _next_index := !_next_index + 1
             _keys_full := List.map (fun (a, b) -> Array.zip a b) snapshot.KeysFull

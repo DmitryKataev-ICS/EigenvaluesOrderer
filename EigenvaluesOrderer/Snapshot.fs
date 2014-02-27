@@ -34,7 +34,7 @@ type Snapshot
             (Array.zip _V _D)
             (Array.zip _B _C)
         |> Array.toList
-    let _eigen_dict = EigenDict(keys, keys_full, keys_ev _EV)
+    let _eigen_dict = EigenDict(keys, keys_full, keys_ev, _EV)
     member x.Keys with get() = _eigen_dict.Keys
     member x.KeysFull with get() = _eigen_dict.KeysFull
     member x.Log with get() = _eigen_dict.Log

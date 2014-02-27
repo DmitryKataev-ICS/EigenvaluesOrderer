@@ -20,6 +20,7 @@ type Orderer(length : int) =
     let _next_index = ref 0
     let _keys : string list ref = ref []
     let _keys_full : (float * float) array list ref = ref [] // always contains keys_full of latest snapshot added
+    let _keys_ev : (float * float) array ref = ref [||]
     member x.AddSnapshot(in_reV : float[,], in_imV : float[,], reD, imD, reB, imB, reC, imC)= //, states) =
         let states : string[] = [||]
         let reV = [|for i in 0..(in_reV.GetLength(1) - 1) -> in_reV.[*, i]|]
@@ -29,6 +30,7 @@ type Orderer(length : int) =
             _keys := snapshot.Keys
             _keys_full := List.map (fun (a, b) -> Array.zip a b) snapshot.KeysFull
             _snapshots.[!_next_index] := Some(snapshot)
+            _keys_ev := snapshot.EigenValues
             _next_index := 1
         else
 //            match (!_keys, !_keys_full) with
@@ -40,6 +42,7 @@ type Orderer(length : int) =
             _snapshots.[!_next_index] := Some(snapshot)
             _next_index := !_next_index + 1
             _keys_full := List.map (fun (a, b) -> Array.zip a b) snapshot.KeysFull
+            _keys_ev := snapshot.EigenValues
     member x.GetOrdered id =
         _snapshots.[id].Value.Value.Unfold2Primitives()
         |> snd |> List.toArray

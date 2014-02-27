@@ -1,12 +1,14 @@
 ﻿namespace EigenvaluesOrderer
 
-type TmpCell(fullkey : (float * float) array) =
+type TmpCell(fullkey : (float * float) array, key_ev : float*float) =
     let _keys_full = fullkey
     let _ev : EigenValue option ref = ref None
+    let _keys_ev = key_ev
     member x.FullKey with get() = _keys_full
+    member x.KeysEV with get() = _keys_ev
     member x.EV with get() = !_ev and set(newval) = _ev := newval
 
-type EigenDict (keys : string list, keys_full : (float * float) array list, ev : EigenValue list) =
+type EigenDict (keys : string list, keys_full : (float * float) array list, keys_ev : (float * float) array, ev : EigenValue list) =
     let _log = ref ""
     let fullkey_dist (a : (float * float) array) (b : (float * float) array) =
         let sqr arg = arg * arg
@@ -59,7 +61,7 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
 
         else
             //let wip = List.zip keys (List.map (fun a -> TmpCell(a)) keys_full) |> List.toSeq |> dict
-            let eax = List.map (fun a -> TmpCell(a)) keys_full
+            let eax = List.map2 (fun a b -> TmpCell(a, b)) keys_full (Array.toList keys_ev)
             let are_available = [|for i in 0..(eax.Length - 1) -> ref true|]
             let all_distances = // all_distances.[i].[j] :> i - eax index, j - ev index
 //                [
@@ -70,11 +72,10 @@ type EigenDict (keys : string list, keys_full : (float * float) array list, ev :
                 List.map
                     (fun (tmpcell : TmpCell) -> 
                         List.map (fun (eig : EigenValue) -> 
-                            (+)
-                                (fullkey_dist 
-                                    tmpcell.FullKey 
-                                    (Array.zip (fst eig.V) (snd eig.V)))
-                                0.0)
+                            (fullkey_dist 
+                                tmpcell.FullKey 
+                                (Array.zip (fst eig.V) (snd eig.V))) +
+                                sqrt ((((fst tmpcell.KeysEV) - eig.Re) ** 2.0) + (((snd tmpcell.KeysEV) - eig.Im) ** 2.0)) )
                             ev 
                         |> List.toArray)
                     eax

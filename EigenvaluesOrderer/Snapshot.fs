@@ -12,7 +12,8 @@ type Snapshot
         imC : float array,
         states : string array,
         keys : string list,
-        keys_full : (float * float) array list) =
+        keys_full : (float * float) array list,
+        keys_ev : (float * float) array) =
     //let vdims = [reV.Length; reV.[0].Length; imV.Length; imV.[0].Length]
     let _V = Array.zip reV imV
     //let ddims = (reD.Length, imD.Length)
@@ -33,11 +34,17 @@ type Snapshot
             (Array.zip _V _D)
             (Array.zip _B _C)
         |> Array.toList
-    let _eigen_dict = EigenDict(keys, keys_full, _EV)
+    let _eigen_dict = EigenDict(keys, keys_full, keys_ev _EV)
     member x.Keys with get() = _eigen_dict.Keys
     member x.KeysFull with get() = _eigen_dict.KeysFull
     member x.Log with get() = _eigen_dict.Log
     member x.AllDistances with get() = _eigen_dict.AllDistaces
+    member x.EigenValues 
+        with get() = 
+            _eigen_dict.Keys
+            |> List.map (fun (a : string) -> _eigen_dict.EigenValues.[a]) 
+            |> List.map (fun (a : EigenValue) -> (a.Re, a.Im))
+            |> List.toArray
     member x.Unfold2Primitives() =
         let _all_ev = List.map (fun (a : string) -> _eigen_dict.EigenValues.[a]) _eigen_dict.Keys
         let rec unfold2ev (eax : EigenValue list) (src : Mode list) =
